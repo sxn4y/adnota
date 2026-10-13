@@ -1,0 +1,43 @@
+[package]
+name = "adnota"
+version = "0.1.0"
+description = "A mindmap-first desktop app for taking study notes"
+authors = ["Adnota contributors"]
+license = "MIT"
+repository = "https://github.com/adnota-app/adnota"
+edition = "2021"
+rust-version = "1.82"
+publish = false
+
+[lib]
+# The shared-library target is required for mobile entry points and keeps the
+# desktop binary as a thin wrapper, which is the layout the Tauri templates use.
+name = "adnota_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+# Used by `tauri dev` to enable devtools and the debug overlay.
+default = []
+custom-protocol = ["tauri/custom-protocol"]
+
+# Release builds are `cargo build --release`; keeping the profile explicit stops the
+# default opt-level=0 from producing a needlessly slow binary.
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
+
+# A dependency-graph crash in a debugging session is rarely worth an optimised
+# build; the inverse is very much worth it.
+[profile.dev]
+incremental = true

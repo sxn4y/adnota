@@ -1,0 +1,29 @@
+{
+  "name": "@adnota/editor",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "ProseMirror editing for Adnota nodes, with first-class inline LaTeX",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --build"
+  },
+  "dependencies": {
+    "@adnota/core": "workspace:*",
+    "@benrbray/prosemirror-math": "^1.0.0",
+    "katex": "^0.16.19",
+    "prosemirror-commands": "^1.7.1",
+    "prosemirror-history": "^1.4.1",
+    "prosemirror-inputrules": "^1.4.0",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.0",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.41.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@adnota/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Adnota desktop shell: a Tauri window around the shared web frontend",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@adnota/core": "workspace:*",
+    "@adnota/scene": "workspace:*"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.2",
+    "typescript": "^5.7.2"
+  }
+}

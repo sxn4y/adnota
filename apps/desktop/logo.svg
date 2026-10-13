@@ -1,0 +1,32 @@
+<!--
+  Adnota mark.
+
+  A mindmap reduced to its minimum legible gesture: one root and two branches. Kept
+  as geometry rather than as a stylised letter so it stays readable at 16px in a
+  taskbar and does not fight the node shapes used in the app itself.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#161a22" />
+
+  <g fill="none" stroke="#3b6ef6" stroke-width="22" stroke-linecap="round">
+    <path d="M170 256 C 214 256, 226 168, 268 168" />
+    <path d="M170 256 C 214 256, 226 344, 268 344" />
+  </g>
+
+  <g fill="#3b6ef6">
+    <rect x="96" y="216" width="148" height="80" rx="40" />
+    <rect x="268" y="130" width="104" height="76" rx="38" />
+    <rect x="268" y="306" width="104" height="76" rx="38" />
+  </g>
+
+  <!-- Two more leaves on the upper branch, so the mark reads as a tree rather than
+       a Y. Still simple enough to survive being scaled to a favicon. -->
+  <g fill="#8fa9f8">
+    <rect x="382" y="92" width="78" height="58" rx="29" />
+    <rect x="382" y="186" width="78" height="58" rx="29" />
+  </g>
+  <g fill="none" stroke="#8fa9f8" stroke-width="16" stroke-linecap="round">
+    <path d="M320 168 C 344 168, 348 121, 382 121" />
+    <path d="M320 168 C 344 168, 348 215, 382 215" />
+  </g>
+</svg>
