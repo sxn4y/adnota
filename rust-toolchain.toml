@@ -1,0 +1,9 @@
+[toolchain]
+# Pinned so that a contributor's build, CI, and a future release all agree.
+#
+# The `components` and `targets` lines are what a fresh clone needs; without them
+# `cargo build` fails on a machine that has not run `rustup default`, which is most
+# of the people who will want to contribute the Rust side.
+channel = "1.96.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]

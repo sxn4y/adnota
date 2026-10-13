@@ -1,0 +1,9 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/scene" },
+    { "path": "./packages/collab" },
+    { "path": "./apps/web" }
+  ]
+}

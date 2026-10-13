@@ -1,0 +1,23 @@
+# Normalise line endings on checkin so that the repository is identical no matter
+# which platform contributed a line. Without this, `core.autocrlf` differences turn
+# every diff into noise on Windows and macOS contributors, which is a real tax on an
+# open source project.
+* text=auto eol=lf
+
+# Files that must stay CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.pdf binary
+*.adnota binary
+*.adnotasync binary

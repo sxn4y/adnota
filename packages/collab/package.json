@@ -1,0 +1,21 @@
+{
+  "name": "@adnota/collab",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Collaboration providers and zero-infrastructure sync exchange for Adnota",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --build"
+  },
+  "dependencies": {
+    "@adnota/core": "workspace:*",
+    "yjs": "^13.6.21"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

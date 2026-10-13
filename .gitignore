@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+target/
+*.tsbuildinfo
+
+# Tauri
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+
+# Test artifacts
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# Visual regression baselines under tests/__screenshots__ are deliberately NOT
+# ignored. They are the expected output; without them committed, CI has nothing to
+# compare against and the suite silently passes.
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+tests/__diff__/
+
+# Local environment
+.env
+.env.local
+*.local
+
+# Signing material. Never commit these. Update signing keys are generated
+# locally and belong in a password manager, not the repository.
+*.key
+*.p12
+*.pfx
+*.mobileprovision

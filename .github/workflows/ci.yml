@@ -1,0 +1,176 @@
+name: CI
+
+# Runs on every push and pull request. Public repositories get unmetered runners on
+# all three platforms, which is what makes the cross-platform matrix affordable; this
+# is the main reason Adnota can promise to build at no cost.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A stale run tells you nothing. Cancel superseded ones on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Keep pnpm's store inside the workspace so the cache step can find it.
+  PNPM_HOME: ${{ github.workspace }}/.pnpm-store
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # The frontend, which is where all of the current functionality lives. Cheap
+  # enough to run on every push.
+  # ---------------------------------------------------------------------------
+  frontend:
+    name: Frontend (types, lint, licences, unit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      # Hard gate, not a report. A source-available dependency would break the
+      # promise the README makes, and nothing else in the build would notice.
+      - name: Check dependency licences
+        run: pnpm license:check
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  # ---------------------------------------------------------------------------
+  # Visual regression. The maths tests deliberately run in three engines because
+  # Tauri's three platform webviews are built on two of them, and MathML support
+  # differs between them. This is the suite that caught the missing KaTeX stylesheet.
+  # ---------------------------------------------------------------------------
+  visual:
+    name: Visual (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, webkit, firefox]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps ${{ matrix.project }}
+
+      - name: Build
+        run: pnpm build
+
+      - name: Visual tests
+        run: pnpm exec playwright test --project=${{ matrix.project }}
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.project }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # The Rust side. Separate because it needs a toolchain and platform SDKs, and
+  # because it is currently a thin shell over the web app rather than the core.
+  # ---------------------------------------------------------------------------
+  desktop:
+    name: Desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Linux webview dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.96.0
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # Licence policy for the Rust tree, kept in step with the JS check.
+      - name: Check Rust dependency licences
+        run: cargo install cargo-deny --locked
+        run: cargo deny --config ../../denytoml check
+
+      - name: Format
+        run: cargo fmt --all -- --check
+        working-directory: apps/desktop/src-tauri
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: apps/desktop/src-tauri
+
+      - name: Test
+        run: cargo test
+        working-directory: apps/desktop/src-tauri
+
+      # Signing credentials are absent on pull requests from forks, which is
+      # correct: an unsigned build is produced there on purpose.
+      - name: Build (unsigned)
+        run: pnpm tauri build --no-bundle

@@ -1,0 +1,26 @@
+{
+  "name": "@adnota/scene",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "SVG scene renderer, math rendering, and mindmap layout for Adnota",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --build"
+  },
+  "dependencies": {
+    "@adnota/core": "workspace:*",
+    "d3-hierarchy": "^3.1.2",
+    "d3-shape": "^3.2.0",
+    "katex": "^0.16.19"
+  },
+  "devDependencies": {
+    "@types/d3-hierarchy": "^3.1.7",
+    "@types/d3-shape": "^3.1.7",
+    "@types/katex": "^0.16.7",
+    "typescript": "^5.7.2"
+  }
+}

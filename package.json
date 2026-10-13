@@ -1,0 +1,49 @@
+{
+  "name": "adnota",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "A mindmap-first desktop app for taking study notes",
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @adnota/web dev",
+    "dev": "pnpm --filter @adnota/web dev",
+    "tauri": "tauri",
+    "desktop:dev": "pnpm --filter @adnota/desktop tauri dev",
+    "build": "pnpm --filter @adnota/web build",
+    "preview": "pnpm --filter @adnota/web preview",
+    "typecheck": "tsc --build --force",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:visual": "playwright test",
+    "license:check": "node scripts/check-licenses.mjs",
+    "check": "pnpm typecheck && pnpm lint && pnpm license:check && pnpm test",
+    "deny": "cargo deny --manifest-path apps/desktop/src-tauri/Cargo.toml check"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.5",
+    "@vitest/coverage-v8": "^5.0.4",
+    "eslint": "^9.18.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.20.0",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+Adnota
+Copyright (c) 2026 Adnota contributors
+
+This product includes software developed by third parties. Each dependency is
+licensed under a permissive license (MIT, ISC, or Apache-2.0) compatible with
+this project's MIT license.
+
+The dependency allowlist is enforced in CI. See:
+  - denytoml                 Rust crate license policy (cargo-deny)
+  - scripts/check-licenses   JavaScript package license policy
+
+Runtime dependencies of note:
+  - KaTeX                    MIT       Copyright (c) 2013-2020 Khan Academy
+  - Yjs                      MIT       Copyright (c) 2017 Kevin Jahns and Yjs contributors
+  - d3-hierarchy, d3-shape   ISC       Copyright (c) 2010-2024 Mike Bostock
+  - ProseMirror              MIT       Copyright (c) 2011-2024 ProseMirror authors
+
+Fonts bundled with the application are licensed under the SIL Open Font
+License 1.1:
+  - Inter                    Copyright (c) 2016 The Inter Project Authors
+  - Source Serif             Copyright (c) 2014-2023 Frank Grießhammer, Adobe
+  - STIX Two Math             Copyright (c) 2017-2023 The STIX Two Project Authors

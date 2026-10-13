@@ -1,0 +1,54 @@
+# cargo-deny configuration.
+#
+# Enforces the same licence policy as `scripts/check-licenses.mjs` for the Rust
+# side. Kept in step deliberately: a policy that only covers the frontend would be
+# quietly wrong the moment a Rust dependency is added.
+#
+# Install: cargo install cargo-deny
+# Run:     cargo deny check
+
+[graph]
+all-features = false
+no-default-features = false
+
+[advisories]
+version = 2
+ignore = []
+
+[licenses]
+# Permissive only. Adnota ships MIT and promises to stay free, so a copyleft or
+# source-available dependency would break the distribution guarantee even though the
+# build would still succeed.
+allow = [
+    "MIT",
+    "ISC",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "0BSD",
+    "Unlicense",
+    "Zlib",
+    "Unicode-3.0",
+]
+confidence-threshold = 0.9
+
+# Every dependency must be declared. An undeclared licence cannot be assumed
+# compatible, so silence is treated as a failure rather than a pass.
+unused-allowed-license = "deny"
+
+# No `[[licenses.exceptions]]` entries exist deliberately. Tauri ships as
+# MIT OR Apache-2.0, which the allow list above already covers, so no exception is
+# needed; adding one here would be the first step towards a laxer policy.
+
+[bans]
+# Crates with many unmaintained transitive dependencies tend to be one bad update
+# away from a licence change, which is exactly what this file exists to prevent.
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = false
+deny = [
+    # Placeholder for bans added as real ones are identified. Empty by design: a
+    # policy file that accumulates aspirational bans nobody enforces is worse than
+    # none, because it looks like the problem is handled.
+]

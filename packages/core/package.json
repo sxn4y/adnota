@@ -1,0 +1,23 @@
+{
+  "name": "@adnota/core",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Adnota document model, CRDT bindings, and .adnota container format",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --build"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "yjs": "^13.6.21"
+  },
+  "devDependencies": {
+    "@types/jszip": "^3.4.1",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,171 @@
+:root {
+  --surface: #f6f7f9;
+  --surface-raised: #ffffff;
+  --border: #d5dae1;
+  --text: #1f2430;
+  --text-muted: #5b6472;
+  --accent: #3b6ef6;
+  --branch: #9aa4b2;
+
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-math-fallback: 'Latin Modern Math', 'STIX Two Math', 'Cambria Math', serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100%;
+}
+
+.adnota-harness {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Toolbar ------------------------------------------------------------------ */
+
+.adnota-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.adnota-brand {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.adnota-layouts {
+  display: flex;
+  gap: 4px;
+}
+
+.adnota-toolbar button {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.adnota-toolbar button:hover {
+  color: var(--text);
+}
+
+.adnota-toolbar button.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+/* Canvas ------------------------------------------------------------------- */
+
+.adnota-canvas {
+  flex: 1 1 auto;
+  overflow: auto;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.adnota-scene {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Node labels -------------------------------------------------------------- */
+
+.adnota-node-label {
+  font-family: var(--font-ui);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  /* Without this the foreignObject subtree is invisible in some webviews. */
+  color: var(--text);
+}
+
+/*
+ * KaTeX emits absolutely positioned spans. Inside a `foreignObject` whose height is
+ * set explicitly, the first line needs somewhere to live, or the glyphs collapse
+ * against the top edge in WebKit. Giving the wrapper a definite block layout keeps
+ * the baseline consistent across all three webviews.
+ */
+.adnota-node-label .katex-display {
+  margin: 0;
+}
+
+.adnota-node-label .katex {
+  font-size: 1em;
+}
+
+/* Measurement host -------------------------------------------------------- */
+
+[data-adnota-measure] {
+  font-family: var(--font-ui);
+}
+
+/* Diagnostics -------------------------------------------------------------- */
+
+.adnota-support {
+  flex: 0 0 auto;
+  max-height: 40vh;
+  overflow: auto;
+  padding: 12px 16px;
+  background: var(--surface-raised);
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.adnota-support h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.adnota-support dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 0 0 10px;
+}
+
+.adnota-support dt {
+  color: var(--text-muted);
+}
+
+.adnota-support dd {
+  margin: 0;
+}
+
+.adnota-support-ua {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.adnota-support-note {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
