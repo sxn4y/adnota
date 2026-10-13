@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "description": "Browser development harness for Adnota, with a mock Tauri IPC backend",
+  "description": "Browser development harness for Adnota",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,25 +13,13 @@
   "dependencies": {
     "@adnota/core": "workspace:*",
     "@adnota/scene": "workspace:*",
-    "@benrbray/prosemirror-math": "^1.0.0",
-    "katex": "^0.16.19",
-    "prosemirror-commands": "^1.7.2",
-    "prosemirror-history": "^1.5.1",
-    "prosemirror-inputrules": "^1.5.1",
-    "prosemirror-keymap": "^1.2.3",
-    "prosemirror-model": "^1.25.12",
-    "prosemirror-state": "^1.4.4",
-    "prosemirror-view": "^1.42.6",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "@adnota/view": "workspace:*"
   },
   "devDependencies": {
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.1.2",
-    "@vitest/coverage-v8": "^5.0.4",
     "typescript": "^5.7.2",
-    "vite": "^8.3.4",
-    "vitest": "^5.0.4"
+    "vite": "^8.0.0"
   }
 }

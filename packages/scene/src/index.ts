@@ -33,6 +33,7 @@ export {
   nodeBox,
   renderLabelHtml,
   serializeScene,
+  stripWrapper,
 } from './scene.ts';
 
 export type { TextMetrics } from './measure.ts';

@@ -35,7 +35,7 @@ import { inlineSchema, markNames, nodeNames } from './schema.ts';
  * The autosave layer marks the document dirty only for local origins, so this
  * symbol is what separates a student's typing from a collaborator's update.
  */
-export const LOCAL_ORIGIN = Symbol('adnota.editor.local');
+export const LOCAL_ORIGIN = 'adnota.local';
 
 /**
  * Origin for transactions carrying a collaborator's changes.
@@ -55,7 +55,7 @@ export const LOCAL_ORIGIN = Symbol('adnota.editor.local');
  * edit must not be undone by the local user's Ctrl+Z. So remote transactions are
  * applied normally and merely excluded from undo via `addToHistory: false`.
  */
-export const REMOTE_ORIGIN = Symbol('adnota.editor.remote');
+export const REMOTE_ORIGIN = 'adnota.remote';
 
 /** Transaction meta key understood by `prosemirror-history`. */
 export const ADD_TO_HISTORY = 'addToHistory';

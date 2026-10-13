@@ -235,11 +235,11 @@ describe('editor state', () => {
     expect(current.doc.textContent).toBe('Cell!');
   });
 
-  it('stamps the local origin on its own transactions', () => {
+  it('exposes distinct meta keys for local and remote transactions', () => {
     // The keymap is the only place that dispatches with this origin, so assert that
     // the symbol is exported and usable rather than trying to reach into a keystroke.
-    expect(typeof LOCAL_ORIGIN).toBe('symbol');
-    expect(typeof REMOTE_ORIGIN).toBe('symbol');
+    expect(typeof LOCAL_ORIGIN).toBe('string');
+    expect(typeof REMOTE_ORIGIN).toBe('string');
     expect(LOCAL_ORIGIN).not.toBe(REMOTE_ORIGIN);
   });
 });

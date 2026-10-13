@@ -7,8 +7,12 @@
     "composite": false,
     "declaration": false,
     "declarationMap": false,
+    "jsx": "react-jsx",
     "types": ["vite/client"]
   },
-  "include": ["src/**/*.ts"],
-  "references": [{ "path": "../../packages/core" }, { "path": "../../packages/scene" }]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "references": [
+    { "path": "../../packages/core" },
+    { "path": "../../packages/scene" }
+  ]
 }

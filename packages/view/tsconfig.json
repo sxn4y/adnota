@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    // The automatic runtime, so no `import React` is needed in every component and
+    // the unused-import lint does not flag JSX that never mentions React by name.
+    "jsx": "react-jsx",
+    "types": []
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../editor" },
+    { "path": "../scene" }
+  ]
+}

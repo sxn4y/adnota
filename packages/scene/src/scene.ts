@@ -106,6 +106,20 @@ function renderTextWithMarks(
   return html;
 }
 
+/**
+ * Unwrap the XHTML namespace from `renderLabelHtml` output.
+ *
+ * `renderLabelHtml` returns a single element carrying `xmlns`, which is what a
+ * `foreignObject` requires when it is built through the DOM. When the same markup is
+ * injected with `innerHTML` into an element that is *already* in the XHTML namespace,
+ * the declaration is redundant. It is also not harmful there, but React's
+ * `dangerouslySetInnerHTML` is the only consumer, so the namespace is stripped once
+ * rather than left for every caller to reason about.
+ */
+export function stripWrapper(html: string): string {
+  return html.replace(/^<div xmlns="[^"]*"/, '<div');
+}
+
 /** Plain text of a label, used for search indexing and accessibility fallbacks. */
 export function labelToPlainText(doc: InlineDoc): string {
   return doc.content
