@@ -11,21 +11,18 @@ import {
   createParagraphNear,
   liftEmptyBlock,
   newlineInCode,
-  setBlockType,
   splitBlock,
   toggleMark,
 } from 'prosemirror-commands';
 import { history, redo, undo } from 'prosemirror-history';
-import { inputRules, textblockTypeInputRule, wrappingInputRule } from 'prosemirror-inputrules';
+import { inputRules } from 'prosemirror-inputrules';
 import { keymap } from 'prosemirror-keymap';
 import { EditorState, type Command, type Plugin } from 'prosemirror-state';
 import {
   insertMathCmd,
   mathBackspaceCmd,
   mathPlugin,
-  makeBlockMathInputRule,
   makeInlineMathInputRule,
-  REGEX_BLOCK_MATH_DOLLARS,
   REGEX_INLINE_MATH_DOLLARS,
 } from '@benrbray/prosemirror-math';
 import type { InlineDoc } from '@adnota/core';
@@ -39,6 +36,41 @@ import { inlineSchema, markNames, nodeNames } from './schema.ts';
  * symbol is what separates a student's typing from a collaborator's update.
  */
 export const LOCAL_ORIGIN = Symbol('adnota.editor.local');
+
+/**
+ * Origin for transactions carrying a collaborator's changes.
+ *
+ * ## Why nothing is filtered
+ *
+ * An earlier version of this gated edits with `filterTransaction`, rejecting anything
+ * without the local origin. That was wrong twice over:
+ *
+ *   - `filterTransaction` is a `PluginSpec` option in prosemirror-state, not an
+ *     `EditorState` config field. Passing it in the config silently did nothing, so the
+ *     guard that looked protective was not present at all.
+ *   - Even as a plugin, rejecting foreign transactions would break the maths plugin,
+ *     which dispatches its own document-changing transactions without our origin.
+ *
+ * The requirement is narrower and is about history, not acceptance: a collaborator's
+ * edit must not be undone by the local user's Ctrl+Z. So remote transactions are
+ * applied normally and merely excluded from undo via `addToHistory: false`.
+ */
+export const REMOTE_ORIGIN = Symbol('adnota.editor.remote');
+
+/** Transaction meta key understood by `prosemirror-history`. */
+export const ADD_TO_HISTORY = 'addToHistory';
+
+/**
+ * Prepare a transaction carrying a collaborator's changes.
+ *
+ * Applied to the transaction rather than performed here, because rebasing a remote
+ * diff is the collaboration layer's job and needs the original update's structure.
+ */
+export function markRemote<T extends { setMeta: (key: unknown, value: unknown) => T }>(
+  transaction: T,
+): T {
+  return transaction.setMeta(REMOTE_ORIGIN, true).setMeta(ADD_TO_HISTORY, false) as T;
+}
 
 export interface EditorOptions {
   /** Initial content. */
@@ -63,44 +95,23 @@ export function createEditorState(options: EditorOptions): EditorState {
     history(),
   ];
 
-  // `filterTransaction` is the single place that decides what counts as a local edit,
-  // so autosave cannot be told about transactions that are not the student's own.
-  const filterTransaction = (transaction: {
-    getMeta: (key: unknown) => unknown;
-    docChanged: boolean;
-  }): boolean => {
-    if (!transaction.docChanged) return true;
-    return transaction.getMeta(LOCAL_ORIGIN) === true;
-  };
-
   return EditorState.create({
     doc: inlineDocToPm(options.doc, schema),
     schema,
     plugins,
-    filterTransaction,
   });
 }
 
 function buildInputRules(schema: typeof inlineSchema): Plugin {
   const inlineMath = schema.nodes[nodeNames.mathInline];
-  const displayMath = schema.nodes[nodeNames.mathDisplay];
 
-  return inputRules({
-    rules: [
-      ...(inlineMath
-        ? [makeInlineMathInputRule(REGEX_INLINE_MATH_DOLLARS, inlineMath)]
-        : []),
-      ...(displayMath
-        ? [makeBlockMathInputRule(REGEX_BLOCK_MATH_DOLLARS, displayMath)]
-        : []),
-      // `**bold**` and `- list item` cover the markdown a student is likely to paste
-      // or type by reflex. Both are cheap and disappear entirely if they misfire,
-      // since the underlying text remains.
-      textblockTypeInputRule(/^```$/, schema.nodes.code_block),
-      wrappingInputRule(/^\s*>\s$/, schema.nodes.blockquote),
-      wrappingInputRule(/^\s*([-+*])\s$/, schema.nodes.bullet_list),
-    ],
-  });
+  // Only the inline schema is in play here, so only maths rules are safe to register.
+  // Referencing a node the schema does not define makes the input rule plugin throw
+  // on the first keystroke rather than at construction, which is a miserable thing
+  // to debug. Block rules belong to the notes editor.
+  const rules = inlineMath ? [makeInlineMathInputRule(REGEX_INLINE_MATH_DOLLARS, inlineMath)] : [];
+
+  return inputRules({ rules });
 }
 
 /**
@@ -115,11 +126,23 @@ function buildKeymap(options: EditorOptions): Record<string, Command> {
     'Mod-z': undo,
     'Mod-y': redo,
     'Mod-Shift-z': redo,
-
-    'Mod-b': toggleMark(markNames.strong),
-    'Mod-i': toggleMark(markNames.em),
-    'Mod-e': toggleMark(markNames.code),
   };
+
+  // `toggleMark` takes a MarkType, not a name, so the schema is consulted and any
+  // mark it does not define is skipped rather than silently bound to undefined.
+  const toggle = (name: string): Command | undefined => {
+    const type = inlineSchema.marks[name];
+    return type ? toggleMark(type) : undefined;
+  };
+
+  for (const [key, name] of [
+    ['Mod-b', markNames.strong],
+    ['Mod-i', markNames.em],
+    ['Mod-e', markNames.code],
+  ] as const) {
+    const command = toggle(name);
+    if (command) handlers[key] = command;
+  }
 
   if (options.onExit) {
     const exit = options.onExit;
@@ -158,7 +181,7 @@ function buildKeymap(options: EditorOptions): Record<string, Command> {
   return handlers;
 }
 
-/** Export for tests that need to assert on a command's existence. */
+/** Exported for tests that need to assert on a command's existence. */
 export const editingCommands = {
   undo,
   redo,
@@ -167,5 +190,4 @@ export const editingCommands = {
       ? insertMathCmd(inlineSchema.nodes[nodeNames.mathInline]!)
       : undefined,
   mathBackspace: mathBackspaceCmd,
-  setBlockType,
 };

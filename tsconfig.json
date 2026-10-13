@@ -4,6 +4,7 @@
     { "path": "./packages/core" },
     { "path": "./packages/scene" },
     { "path": "./packages/collab" },
+    { "path": "./packages/editor" },
     { "path": "./apps/web" }
   ]
 }

@@ -6,12 +6,23 @@
  * the canvas re-renders the settled SVG scene. That split is what lets the export path
  * stay pure SVG while typing still gets KaTeX's speed and full cursor behaviour
  * inside a formula.
+ *
+ * The document model is authoritative. ProseMirror's representation is adapted to it
+ * by `convert.ts`, never the other way round, so a change of editor cannot invalidate
+ * an existing `.adnota` file.
  */
 
-export { inlineSchema, markNames, nodeNames } from './schema.ts';
+export { blockSchema, inlineSchema, markNames, nodeNames } from './schema.ts';
 
 export type { EditorOptions } from './editor.ts';
-export { LOCAL_ORIGIN, createEditorState, editingCommands } from './editor.ts';
+export {
+  ADD_TO_HISTORY,
+  LOCAL_ORIGIN,
+  REMOTE_ORIGIN,
+  createEditorState,
+  editingCommands,
+  markRemote,
+} from './editor.ts';
 
 export {
   blockDocFromEditor,

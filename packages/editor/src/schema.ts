@@ -41,66 +41,136 @@ const marks = {
   } satisfies MarkSpec,
 } as const;
 
-const nodes = {
-  /**
-   * The inline container used for a node's canvas label.
-   *
-   * `inline*` rather than a paragraph wrapper: a label is one visual run that wraps,
-   * and a block inside it would make measurement and caret handling harder for no gain.
-   */
-  doc: { content: 'inline*' } satisfies NodeSpec,
-
-  /**
-   * An image inside a label, rendered as a thumbnail.
-   *
-   * Atoms carry an `assetId`; the bytes live in the container, not the document.
-   */
-  image: {
-    inline: true,
-    group: 'inline',
-    atom: true,
-    attrs: {
-      assetId: { default: '' },
-      alt: { default: null },
+/**
+ * An image inside a label, rendered as a thumbnail.
+ *
+ * Atoms carry an `assetId`; the bytes live in the container, not the document. The
+ * DOM form round-trips through `data-` attributes so that pasted content does not
+ * lose its asset reference.
+ */
+const imageNode = {
+  inline: true,
+  group: 'inline',
+  atom: true,
+  attrs: {
+    assetId: { default: '' },
+    alt: { default: null },
+  },
+  toDOM: (node: { attrs: Record<string, unknown> }) => [
+    'span',
+    {
+      'data-asset-id': String(node.attrs.assetId ?? ''),
+      'data-alt': String(node.attrs.alt ?? ''),
+      class: 'adnota-inline-image',
     },
-    // No real NodeView yet, so the DOM here is the placeholder the editor shows until
-    // the asset pipeline lands. It must round-trip through `data-` attributes or pasted
-    // content would lose its asset reference.
-    toDOM: (node) => [
-      'span',
-      {
-        'data-asset-id': String(node.attrs.assetId ?? ''),
-        'data-alt': String(node.attrs.alt ?? ''),
-        class: 'adnota-inline-image',
-      },
-      'image',
-    ],
-    parseDOM: [
-      {
-        tag: 'span[data-asset-id]',
-        getAttrs: (dom) => ({
-          assetId: (dom as HTMLElement).getAttribute('data-asset-id') ?? '',
-          alt: (dom as HTMLElement).getAttribute('data-alt') || null,
-        }),
-      },
-    ],
-  } satisfies NodeSpec,
+    'image',
+  ],
+  parseDOM: [
+    {
+      tag: 'span[data-asset-id]',
+      getAttrs: (dom: HTMLElement) => ({
+        assetId: dom.getAttribute('data-asset-id') ?? '',
+        alt: dom.getAttribute('data-alt') || null,
+      }),
+    },
+  ],
+} satisfies NodeSpec;
 
-  ...(mathSchemaSpec.nodes ?? {}),
-} as const;
+const mathNodes = mathSchemaSpec.nodes ?? {};
 
-/** Schema for inline content: a node's canvas label. */
+/**
+ * Schema for a node's canvas label: one inline run that wraps.
+ *
+ * Deliberately excludes `math_display` and the block nodes. A label is a single
+ * visual run, and including a block node it has nowhere valid to live produces a
+ * schema that rejects its own documents.
+ */
 export const inlineSchema = new Schema({
-  nodes: nodes as never,
+  nodes: {
+    doc: { content: 'inline*' },
+    text: { group: 'inline' },
+    math_inline: mathNodes.math_inline ?? {},
+    image: imageNode,
+  } as never,
+  marks: marks as never,
+});
+
+/**
+ * Schema for a node's notes body: the block document.
+ *
+ * Kept separate from the inline schema because the two disagree about the top-level
+ * container. Sharing one schema and overriding `doc` produced a schema whose
+ * `math_display` had no valid position, which ProseMirror reports only at insertion
+ * time rather than at construction.
+ */
+export const blockSchema = new Schema({
+  nodes: {
+    doc: { content: 'block+' },
+    paragraph: { content: 'inline*', group: 'block', parseDOM: [{ tag: 'p' }], toDOM: () => ['p', 0] },
+    heading: {
+      attrs: { level: { default: 1 } },
+      content: 'inline*',
+      group: 'block',
+      defining: true,
+      parseDOM: [1, 2, 3, 4, 5, 6].map((level) => ({
+        tag: `h${level}`,
+        attrs: { level },
+      })),
+      toDOM: (node: { attrs: Record<string, unknown> }) => [
+        `h${Math.min(6, Math.max(1, Number(node.attrs.level) || 1))}`,
+        0,
+      ],
+    },
+    bullet_list: {
+      content: 'list_item+',
+      group: 'block',
+      parseDOM: [{ tag: 'ul' }],
+      toDOM: () => ['ul', 0],
+    },
+    ordered_list: {
+      content: 'list_item+',
+      group: 'block',
+      attrs: { order: { default: 1 } },
+      parseDOM: [{ tag: 'ol' }],
+      toDOM: () => ['ol', 0],
+    },
+    list_item: { content: 'block+', defining: true, parseDOM: [{ tag: 'li' }], toDOM: () => ['li', 0] },
+    blockquote: {
+      content: 'block+',
+      group: 'block',
+      parseDOM: [{ tag: 'blockquote' }],
+      toDOM: () => ['blockquote', 0],
+    },
+    code_block: {
+      content: 'text*',
+      marks: '',
+      group: 'block',
+      code: true,
+      defining: true,
+      parseDOM: [{ tag: 'pre', preserveWhitespace: 'full' }],
+      toDOM: () => ['pre', ['code', 0]],
+    },
+    text: { group: 'inline' },
+    math_inline: mathNodes.math_inline ?? {},
+    math_display: mathNodes.math_display ?? {},
+    image: imageNode,
+  } as never,
   marks: marks as never,
 });
 
 export const nodeNames = {
   doc: 'doc',
+  paragraph: 'paragraph',
   text: 'text',
   mathInline: 'math_inline',
   mathDisplay: 'math_display',
   image: 'image',
+  codeBlock: 'code_block',
+  blockquote: 'blockquote',
+  bulletList: 'bullet_list',
+  orderedList: 'ordered_list',
+  listItem: 'list_item',
+  heading: 'heading',
 } as const;
 
 export const markNames = {

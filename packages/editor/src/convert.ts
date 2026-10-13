@@ -9,7 +9,7 @@
  * Node rather than only through the browser.
  */
 
-import { Node as PMNode, type Schema } from 'prosemirror-model';
+import { type Node as PMNode, type Schema } from 'prosemirror-model';
 import type { BlockDoc, BlockNode, InlineDoc, InlineNode, Mark } from '@adnota/core';
 import { markNames, nodeNames } from './schema.ts';
 
@@ -73,12 +73,26 @@ function inlineNodeFromPm(value: unknown): InlineNode | null {
 /**
  * Read a formula's LaTeX from a ProseMirror node.
  *
- * `prosemirror-math` keeps it as node text. The `latex` attribute form is also
- * accepted so that content pasted from elsewhere, or written by a future build,
- * still converts.
+ * `prosemirror-math` declares its maths nodes as atoms with `content: "text*"`, so
+ * the LaTeX arrives as a *child text node* in the JSON rather than as an attribute.
+ * The `latex` and `tex` attribute forms are also accepted so that content pasted from
+ * elsewhere, or written by a future build, still converts.
  */
 function mathLatexOf(value: Record<string, unknown>): string | null {
   if (typeof value.text === 'string') return value.text;
+
+  if (Array.isArray(value.content)) {
+    // Concatenate rather than take the first child: a formula long enough to be
+    // split across text nodes would otherwise be truncated.
+    let joined = '';
+    for (const child of value.content) {
+      if (isRecord(child) && child.type === nodeNames.text && typeof child.text === 'string') {
+        joined += child.text;
+      }
+    }
+    if (joined.length > 0) return joined;
+  }
+
   const attrs = isRecord(value.attrs) ? value.attrs : {};
   const latex = attrs.latex ?? attrs.tex;
   return typeof latex === 'string' ? latex : null;
@@ -106,6 +120,11 @@ function readMarks(value: unknown): Mark[] {
 
 /** The model's shape for a label, to ProseMirror JSON. */
 export function inlineDocToPm(doc: InlineDoc, schema: Schema): PMNode {
+  const docType = schema.nodes.doc;
+  // Only reachable if a caller passes a schema without a top-level `doc`, which the
+  // inline schema always has. Asserting rather than throwing keeps the failure loud.
+  if (!docType) throw new Error('schema has no top-level doc node');
+
   const content: PMNode[] = [];
 
   for (const node of doc.content) {
@@ -113,7 +132,7 @@ export function inlineDocToPm(doc: InlineDoc, schema: Schema): PMNode {
     if (converted) content.push(converted);
   }
 
-  return schema.nodes.doc.create(null, content);
+  return docType.create(null, content);
 }
 
 function inlineNodeToPm(node: InlineNode, schema: Schema): PMNode | null {

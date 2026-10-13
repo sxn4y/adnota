@@ -9,6 +9,7 @@ export default defineConfig({
       '@adnota/core': resolve('./packages/core/src/index.ts'),
       '@adnota/scene': resolve('./packages/scene/src/index.ts'),
       '@adnota/collab': resolve('./packages/collab/src/index.ts'),
+      '@adnota/editor': resolve('./packages/editor/src/index.ts'),
     },
   },
   test: {

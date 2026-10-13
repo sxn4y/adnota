@@ -157,6 +157,43 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
 
+  packages/editor:
+    dependencies:
+      '@adnota/core':
+        specifier: workspace:*
+        version: link:../core
+      '@benrbray/prosemirror-math':
+        specifier: ^1.0.0
+        version: 1.0.0(katex@0.16.47)(prosemirror-commands@1.7.2)(prosemirror-history@1.5.1)(prosemirror-inputrules@1.5.1)(prosemirror-keymap@1.2.3)(prosemirror-model@1.25.12)(prosemirror-state@1.4.4)(prosemirror-transform@1.12.2)(prosemirror-view@1.42.6)
+      katex:
+        specifier: ^0.16.19
+        version: 0.16.47
+      prosemirror-commands:
+        specifier: ^1.7.1
+        version: 1.7.2
+      prosemirror-history:
+        specifier: ^1.4.1
+        version: 1.5.1
+      prosemirror-inputrules:
+        specifier: ^1.4.0
+        version: 1.5.1
+      prosemirror-keymap:
+        specifier: ^1.2.3
+        version: 1.2.3
+      prosemirror-model:
+        specifier: ^1.25.0
+        version: 1.25.12
+      prosemirror-state:
+        specifier: ^1.4.4
+        version: 1.4.4
+      prosemirror-view:
+        specifier: ^1.41.0
+        version: 1.42.6
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
   packages/scene:
     dependencies:
       '@adnota/core':
