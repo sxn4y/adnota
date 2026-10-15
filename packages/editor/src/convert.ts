@@ -216,7 +216,10 @@ function blockNodeFromPm(value: unknown): BlockNode | null {
       return { type: 'blockquote', content: children() };
 
     case 'code_block':
-      return { type: 'code_block', text: typeof value.text === 'string' ? value.text : '' };
+      // A code block is `text*`, so its content is a text child rather than a `text`
+      // property on the node. Reading `value.text` here always returned undefined and
+      // silently emptied every code block the moment a notes body was reloaded.
+      return { type: 'code_block', text: textContentOf(value) };
 
     case nodeNames.mathDisplay: {
       const latex = mathLatexOf(value);
@@ -240,6 +243,20 @@ function inlineContentOf(value: Record<string, unknown>): InlineNode[] {
     .filter((node): node is InlineNode => node !== null);
 }
 
+/** Concatenate every text child, so a node split across runs is not truncated. */
+function textContentOf(value: Record<string, unknown>): string {
+  if (typeof value.text === 'string') return value.text;
+  if (!Array.isArray(value.content)) return '';
+
+  let joined = '';
+  for (const child of value.content) {
+    if (isRecord(child) && child.type === nodeNames.text && typeof child.text === 'string') {
+      joined += child.text;
+    }
+  }
+  return joined;
+}
+
 /** Read a live ProseMirror document back into the model's shape. */
 export function inlineDocFromEditor(doc: PMNode): InlineDoc {
   return inlineDocFromPm(doc.toJSON());
@@ -247,6 +264,105 @@ export function inlineDocFromEditor(doc: PMNode): InlineDoc {
 
 export function blockDocFromEditor(doc: PMNode): BlockDoc {
   return blockDocFromPm(doc.toJSON());
+}
+
+/**
+ * Convert a notes body into ProseMirror JSON.
+ *
+ * The inverse of `blockDocFromPm`. It exists because opening a node's notes needs real
+ * content in the editor: `EditorState.create` with an empty document would show an
+ * empty panel no matter what the student had written, and saving on the first keystroke
+ * would then replace their notes with a blank.
+ *
+ * Blocks the block schema cannot express are dropped rather than approximated. A
+ * corrupt node then renders as slightly short, instead of throwing during mount and
+ * taking the panel down with it.
+ */
+export function blockDocToPm(doc: BlockDoc, schema: Schema): PMNode {
+  const content = doc.content
+    .map((block) => blockNodeToPm(block, schema))
+    .filter((node): node is PMNode => node !== null && node !== undefined);
+
+  // ProseMirror rejects a schema whose content expression forbids empty documents, so
+  // an empty notes body starts as one empty paragraph.
+  if (content.length === 0) {
+    const paragraph = schema.nodes[nodeNames.paragraph];
+    if (paragraph) content.push(paragraph.create());
+  }
+
+  // Built through `topNodeType` rather than a JSON round-trip: the content is already
+  // in ProseMirror's shape, and `fromJSON` would mean validating and rebuilding
+  // everything only to throw the result away.
+  return schema.topNodeType.create(null, content);
+}
+
+function blockNodeToPm(block: BlockNode, schema: Schema): PMNode | null {
+  const { nodes } = schema;
+
+  switch (block.type) {
+    case 'paragraph': {
+      const type = nodes[nodeNames.paragraph];
+      return type ? type.create(null, inlineContentToPm(block.content ?? [], schema)) : null;
+    }
+
+    case 'heading': {
+      const type = nodes[nodeNames.heading];
+      const level = Math.min(6, Math.max(1, block.attrs.level));
+      return type ? type.create({ level }, inlineContentToPm(block.content ?? [], schema)) : null;
+    }
+
+    case 'bullet_list':
+    case 'ordered_list':
+    case 'list_item':
+    case 'blockquote': {
+      const name = {
+        bullet_list: nodeNames.bulletList,
+        ordered_list: nodeNames.orderedList,
+        list_item: nodeNames.listItem,
+        blockquote: nodeNames.blockquote,
+      }[block.type];
+      const type = nodes[name];
+      return type ? type.create(null, blockContentToPm(block.content, schema)) : null;
+    }
+
+    case 'code_block': {
+      const type = nodes[nodeNames.codeBlock];
+      return type ? type.create(null, block.text ? schema.text(block.text) : undefined) : null;
+    }
+
+    case 'math_display': {
+      const type = nodes[nodeNames.mathDisplay];
+      // `math_display` is declared `content: 'text*'` with no attrs, so the LaTeX is
+      // the node's text child. Passing it as an attribute would be silently discarded
+      // by ProseMirror's attribute computation and the formula would come back empty.
+      return type ? type.create(null, block.latex ? schema.text(block.latex) : undefined) : null;
+    }
+
+    case 'image': {
+      const type = nodes[nodeNames.image];
+      // Images reference a document asset rather than a path, so nothing is resolved
+      // here: the panel shows the asset once the container has written it to disk.
+      return type ? type.create({ assetId: block.assetId, alt: block.alt ?? '' }) : null;
+    }
+  }
+
+  // A block the schema cannot express is dropped, not returned as undefined: a
+  // loose undefined passes an !== null filter and then throws on first use,
+  // which would take the whole notes panel down rather than shortening one node.
+  return null;
+}
+
+function blockContentToPm(content: readonly BlockNode[], schema: Schema): PMNode[] {
+  return content
+    .map((block) => blockNodeToPm(block, schema))
+    .filter((node): node is PMNode => node !== null && node !== undefined);
+}
+
+/** Inline content is shared between the two schemas, so this handles both. */
+function inlineContentToPm(content: readonly InlineNode[], schema: Schema): PMNode[] {
+  return content
+    .map((node) => inlineNodeToPm(node, schema))
+    .filter((n): n is PMNode => n !== null);
 }
 
 // ---------------------------------------------------------------------------

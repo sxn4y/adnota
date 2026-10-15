@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "identifier": "app.adnota.desktop",
   "build": {
-    "frontendDist": "../../web/dist",
-    "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "pnpm --filter @adnota/web dev",
-    "beforeBuildCommand": "pnpm --filter @adnota/web build"
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5174",
+    "beforeDevCommand": "pnpm --filter @adnota/desktop vite",
+    "beforeBuildCommand": "pnpm --filter @adnota/desktop vite:build"
   },
   "app": {
     "windows": [
@@ -50,7 +50,15 @@
     "shortDescription": "Mindmap-first study notes",
     "longDescription": "A mindmap-first desktop app for taking study notes, with live LaTeX, images, and freehand drawing on the same canvas. Local-first, no account, no telemetry.",
     "copyright": "Copyright (c) 2026 Adnota contributors",
-    "licenseFile": "../../LICENSE"
+    "licenseFile": "../../../LICENSE",
+      "fileAssociations": [
+        {
+          "ext": ["adnota"],
+          "name": "Adnota document",
+          "description": "Adnota mindmap document",
+          "role": "Editor"
+        }
+      ]
   },
   "plugins": {}
 }

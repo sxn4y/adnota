@@ -1,7 +1,11 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Baseline permissions. Adnota needs no window, shell, or network access; the only capability it requests is the core window, which Tauri grants implicitly. Filesystem access goes through the shell's own commands rather than a blanket fs permission, so a compromised renderer cannot read arbitrary paths.",
+  "description": "Baseline permissions. Filesystem access goes through the shell's own commands rather than a blanket fs permission, so a compromised renderer cannot read arbitrary paths. The dialog is granted only the two operations the UI actually calls — open a file, save a file — rather than the plugin's whole default surface, which also includes message boxes and system-tray access that Adnota has no use for.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "dialog:allow-open",
+    "dialog:allow-save"
+  ]
 }

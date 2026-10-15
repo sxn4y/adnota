@@ -1,0 +1,37 @@
+/**
+ * Boot and failure styles.
+ *
+ * Only what is needed before React mounts, plus the error panel. Everything the running
+ * app needs lives in `@adnota/view`.
+ */
+
+.adnota-boot {
+  margin: 0;
+  padding: 40vh 24px 0;
+  text-align: center;
+  color: #5b6472;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.adnota-boot-error {
+  max-width: 34rem;
+  margin: 18vh auto 0;
+  padding: 0 24px;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: #1f2430;
+}
+
+.adnota-boot-error h1 {
+  font-size: 1.1rem;
+  margin: 0 0 8px;
+}
+
+.adnota-boot-error p {
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+
+.adnota-boot-hint {
+  color: #5b6472;
+  font-size: 0.9rem;
+}

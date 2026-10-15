@@ -6,6 +6,11 @@
  * an app directory is what stops the two from drifting apart.
  */
 
+export { DocumentsPanel } from './DocumentsPanel.tsx';
+export type { DocumentsPanelProps } from './DocumentsPanel.tsx';
+export type { DocumentLibrary } from './library.ts';
+export { MemoryLibrary, defaultTitle, filenameFor, starterDocument, validateRename } from './library.ts';
+export { MathLabel, inlineToPlain } from './MathLabel.tsx';
 export { MathSupportReport } from './MathSupportReport.tsx';
 export type { MathSupportReportProps } from './MathSupportReport.tsx';
 

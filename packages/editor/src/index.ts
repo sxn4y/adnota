@@ -13,20 +13,25 @@
  */
 
 export { blockSchema, inlineSchema, markNames, nodeNames } from './schema.ts';
+export { blockMathNodeView, isBlockMathType } from './blockMathView.ts';
 
-export type { EditorOptions } from './editor.ts';
+export type { BlockEditorOptions, EditorOptions } from './editor.ts';
 export {
   ADD_TO_HISTORY,
   LOCAL_ORIGIN,
   REMOTE_ORIGIN,
+  createBlockEditorState,
   createEditorState,
   editingCommands,
+  leaveMathAt,
+  leaveMathSelection,
   markRemote,
 } from './editor.ts';
 
 export {
   blockDocFromEditor,
   blockDocFromPm,
+  blockDocToPm,
   inlineDocFromEditor,
   inlineDocFromPm,
   inlineDocToPm,

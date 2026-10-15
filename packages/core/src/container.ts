@@ -21,7 +21,7 @@
 import JSZip from 'jszip';
 import * as Y from 'yjs';
 import { ADNOTA_FORMAT_VERSION, type AdnotaAsset } from './model.ts';
-import { getAssets } from './schema.ts';
+import { getAssets, getMeta, migrateChildrenLayout } from './schema.ts';
 
 export const CONTAINER_EXTENSION = '.adnota';
 export const MIME_TYPE = 'application/x-adnota';
@@ -41,6 +41,15 @@ export interface ContainerFormat {
   readonly app: 'adnota';
   readonly generator: string;
   readonly createdAt: number;
+  /**
+   * Document title, mirrored here so a file listing does not have to open it.
+   *
+   * Optional because files written before this field existed do not have it. Listing a
+   * folder otherwise means decompressing and applying every document's CRDT just to
+   * show its name, which is slow enough to be felt and scales with the folder.
+   */
+  readonly title?: string;
+
 }
 
 export interface AssetBlob {
@@ -57,6 +66,9 @@ export interface LoadedDocument {
 export interface SerializeOptions {
   readonly generator?: string;
   readonly createdAt?: number;
+  /** Mirrored into the container's header; see `ContainerFormat.title`. */
+  readonly title?: string;
+
 }
 
 export interface SerializedDocument {
@@ -100,6 +112,7 @@ export async function buildDocument(
         app: 'adnota',
         generator: options.generator ?? 'adnota/unknown',
         createdAt: options.createdAt ?? readCreatedAt(doc),
+        title: options.title ?? getMeta(doc).title,
       } satisfies ContainerFormat,
       null,
       2,
@@ -167,9 +180,18 @@ export async function loadDocument(bytes: Uint8Array): Promise<LoadedDocument> {
     throw new Error('Not an Adnota file: missing doc.yjs');
   }
 
-  const update = await docEntry.async('uint8array');
+const update = await docEntry.async('uint8array');
+
+  // A bare document, not `createDoc()`. Pre-creating the root here would put a node map
+  // at `nodes['root']` that then competes with the root arriving in the update, and Yjs
+  // settles that last-writer-wins — the file would open with someone else's root and
+  // silently lose this one's branches.
   const doc = new Y.Doc();
   Y.applyUpdate(doc, update);
+
+  // Containers written before children lived on each node's own map are moved forward on
+  // open, so the rest of the codebase only ever sees one layout.
+  migrateChildrenLayout(doc);
 
   const assets = new Map<string, AssetBlob>();
   for (const asset of getAssets(doc)) {

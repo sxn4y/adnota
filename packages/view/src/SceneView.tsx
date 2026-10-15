@@ -16,7 +16,7 @@ import {
   stripWrapper,
 } from '@adnota/scene';
 import { LABEL_FONT_SIZE, PADDING_X, PADDING_Y, measureNode, type SceneState } from './scene.ts';
-import { MAX_SCALE, MIN_SCALE, panBy, zoomAt, type Viewport } from './viewport.ts';
+import { panBy, zoomAt, type Viewport } from './viewport.ts';
 
 const BRANCH_COLOR = '#9aa4b0';
 const NODE_FILL = '#ffffff';
@@ -105,13 +105,21 @@ export function SceneView({
       const anchorX = event.clientX - rect.left;
       const anchorY = event.clientY - rect.top;
 
-      // Trackpad pinch arrives as ctrlKey+wheel; both should zoom, but a pinch is
-      // usually finer-grained so it takes a smaller step.
-      const factor = event.ctrlKey ? 1.02 : Math.exp(-event.deltaY * 0.0015);
+      // Trackpad pinch arrives as ctrlKey+wheel, and it must still respond to the
+      // *direction* of the gesture. A fixed factor here ignored deltaY entirely, which
+      // made pinch zoom one-way: you could magnify but never shrink. On a laptop
+      // trackpad pinch is the gesture people reach for first, so that read as "zooming
+      // is broken".
+      //
+      // The pinch step is finer because a pinch produces much smaller deltas per gesture
+      // than a wheel notch.
+      const sensitivity = event.ctrlKey ? 0.01 : 0.0015;
+      const factor = Math.exp(-event.deltaY * sensitivity);
 
-      onViewportChange(
-        zoomAt(viewport, { factor: clampZoom(viewport.scale * factor), anchorX, anchorY }),
-      );
+      // `zoomAt` takes a *multiplier* and clamps the resulting scale itself. Passing a
+      // pre-multiplied value here made the scale compound with itself: zooming out
+      // crawled towards the limit while zooming in shot away from it.
+      onViewportChange(zoomAt(viewport, { factor, anchorX, anchorY }));
     },
     [onViewportChange, viewport],
   );
@@ -214,6 +222,3 @@ export function SceneView({
   );
 }
 
-function clampZoom(scale: number): number {
-  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
-}

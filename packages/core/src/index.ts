@@ -52,7 +52,8 @@ export {
   getMeta,
   getNode,
   getShapes,
-  getStrokes,
+getStrokes,
+  migrateChildrenLayout,
   moveNode,
   newId,
   nodesMap,
@@ -85,5 +86,14 @@ export {
 export type { BinaryStorage } from './storage.ts';
 export { MemoryStorage } from './storage.ts';
 
+export type { DocumentSummary } from './summary.ts';
+export { readSummary, sortSummaries, titleFromName } from './summary.ts';
+
 export type { SaveOptions, SaveState } from './autosave.ts';
 export { BACKUP_SUFFIX, DocumentSession, createUndoManager } from './autosave.ts';
+
+export type { MarkdownOptions, OutlineEntry } from './markdown.ts';
+export { blockToMarkdown, inlineToMarkdown, toMarkdown, toOutline, toPlainText } from './markdown.ts';
+
+export type { SearchHit, SearchOptions, Snippet } from './search.ts';
+export { indexOfCaseInsensitive, search, snippetAround } from './search.ts';

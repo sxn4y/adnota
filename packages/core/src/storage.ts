@@ -11,8 +11,7 @@
  */
 
 /** A binary blob addressed by an opaque string path. */
-export interface BinaryStorage {
-  /** Resolve to `null` when the path does not exist. */
+export interface BinaryStorage {  /** Resolve to `null` when the path does not exist. */
   read(path: string): Promise<Uint8Array | null>;
   /** Must replace any existing file atomically; never leave a partial write. */
   write(path: string, bytes: Uint8Array): Promise<void>;

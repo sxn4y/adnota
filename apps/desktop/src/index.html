@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Adnota</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <!--
+      Rendered before React mounts so the window is never blank. A desktop app that
+      shows a white rectangle while it starts reads as a crash, and on a slow first
+      launch (compiling Rust, reading the document) that can be seconds.
+    -->
+    <div id="app">
+      <p class="adnota-boot">Opening your notes…</p>
+    </div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

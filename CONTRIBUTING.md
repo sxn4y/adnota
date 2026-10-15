@@ -34,13 +34,30 @@ That runs, in order:
 
 | Command | What it does |
 | --- | --- |
-| `pnpm typecheck` | TypeScript, no emit |
+| `pnpm typecheck` | TypeScript across every package **and both apps** |
 | `pnpm lint` | ESLint across all packages |
+| `pnpm license:check` | Fails if a dependency's license drifts off the allowlist |
 | `pnpm test` | Vitest unit tests |
-| `pnpm test:visual` | Playwright visual regression (requires `pnpm build`) |
-| `pnpm licenses` | Fails if a dependency's license drifts off the allowlist |
 
-All of these run in CI. The license check is not advisory — it is a hard gate.
+All of these run in CI, and the license check is a hard gate rather than advisory.
+
+Browser tests are **not** part of `pnpm check`, because they need a build and start two
+dev servers:
+
+```bash
+pnpm test:visual
+```
+
+They cover three engines (Chromium, WebKit, Gecko) and include a spec that loads the
+*desktop* bundle with its IPC bridge stubbed — so the entry point the student actually
+launches is exercised, not only the browser harness.
+
+### Typecheck covers the desktop app
+
+`apps/desktop` is in the root `tsconfig.json` references. This is load-bearing rather than
+tidiness: while it was missing, the whole window shipped showing its "could not open your
+notes" panel because of four undeclared symbols that neither the bundler nor any test
+could see. If you add a package or an app, add it there too.
 
 ## Dependencies
 

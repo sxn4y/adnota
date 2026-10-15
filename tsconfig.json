@@ -6,6 +6,10 @@
     { "path": "./packages/collab" },
     { "path": "./packages/editor" },
     { "path": "./packages/view" },
-    { "path": "./apps/web" }
+    { "path": "./apps/web" },
+    // The desktop entry is part of the app, not a side project. It was absent here
+    // until the whole window shipped showing its "could not open your notes" panel
+    // because of four undeclared symbols — none of which `pnpm typecheck` could see.
+    { "path": "./apps/desktop" }
   ]
 }

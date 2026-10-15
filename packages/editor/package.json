@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@adnota/core": "workspace:*",
+    "@adnota/scene": "workspace:*",
     "@benrbray/prosemirror-math": "^1.0.0",
     "katex": "^0.16.19",
     "prosemirror-commands": "^1.7.1",

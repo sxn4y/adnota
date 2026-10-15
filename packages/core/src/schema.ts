@@ -8,9 +8,23 @@
  * *different fields of the same node* merge cleanly, whereas a plain object would be
  * replaced wholesale and silently lose one person's edit.
  *
- * Child ordering lives in a separate `Y.Map<Y.Array<NodeId>>` keyed by parent id.
+ * Child ordering lives in a `Y.Array` **on each node's own map**, keyed by nothing.
  * `Y.Array` gives us positional moves for free and keeps sibling order stable under
  * concurrent insertion at different positions.
+ *
+ * ## Why the children array is not in a shared map
+ *
+ * It used to be. The first design kept `Y.Map<Y.Array<NodeId>>` keyed by parent id, and
+ * that is a map-key conflict waiting to happen: two peers editing the same parent each
+ * hold their *own* `Y.Array` under that key, and Yjs settles a map-key conflict
+ * last-writer-wins. One peer's entire child list is discarded, silently.
+ *
+ * Measured: two peers sharing a parent, each adding children while offline, merged to 2
+ * and 2 nodes where 3 and 3 was correct. A node simply vanished, with no error anywhere.
+ *
+ * Holding the array on the node's own map removes the conflict entirely — the key is the
+ * node's id, which both peers agree on, and what they actually mutate is a `Y.Array`,
+ * whose concurrent pushes merge as sequence operations rather than replacing each other.
  *
  * The `LOCAL_ORIGIN` symbol tags transactions that originate on this device so that
  * `Y.UndoManager` tracks exactly the edits a user is responsible for and not remote
@@ -37,6 +51,11 @@ export const REMOTE_ORIGIN = Symbol('adnota.remote');
 /** Top-level map keys on the document root. */
 export const SCHEMA_KEYS = {
   nodes: 'nodes',
+  /**
+   * Legacy child ordering, kept only so old containers can be read.
+   *
+   * Never written to by this version. See `migrateChildrenLayout`.
+   */
   children: 'children',
   strokes: 'strokes',
   shapes: 'shapes',
@@ -48,6 +67,7 @@ export const SCHEMA_KEYS = {
 const NODE_FIELDS = {
   id: 'id',
   parentId: 'parentId',
+  children: 'children',
   label: 'label',
   notes: 'notes',
   shape: 'shape',
@@ -130,6 +150,7 @@ export function createDoc(title = 'Untitled'): Y.Doc {
     const root = new Y.Map<unknown>();
     root.set(NODE_FIELDS.id, ROOT_NODE_ID);
     root.set(NODE_FIELDS.parentId, null);
+    root.set(NODE_FIELDS.children, new Y.Array<NodeId>());
     root.set(NODE_FIELDS.label, emptyLabel());
     root.set(NODE_FIELDS.notes, null);
     root.set(NODE_FIELDS.shape, 'pill');
@@ -141,9 +162,6 @@ export function createDoc(title = 'Untitled'): Y.Doc {
     root.set(NODE_FIELDS.createdAt, Date.now());
     root.set(NODE_FIELDS.updatedAt, Date.now());
     nodesMap(doc).set(ROOT_NODE_ID, root);
-
-    const rootChildren = new Y.Array<NodeId>();
-    childrenMap(doc).set(ROOT_NODE_ID, rootChildren);
 
     const meta = metaMap(doc);
     meta.set('title', title);
@@ -234,7 +252,84 @@ export function setTitle(doc: Y.Doc, title: string): void {
 // ---------------------------------------------------------------------------
 
 export function getChildIds(doc: Y.Doc, parentId: NodeId): NodeId[] {
+  // Read-only fallback to the legacy map so a container written by the old layout is
+  // still readable before `migrateChildrenLayout` has run. Reads must never write, so
+  // this does not create the array on the fly.
+  const node = nodesMap(doc).get(parentId);
+  const owned = node?.get(NODE_FIELDS.children);
+  if (owned instanceof Y.Array) return owned.toArray() as NodeId[];
+
   return childrenMap(doc).get(parentId)?.toArray() ?? [];
+}
+
+/**
+ * The children array for a parent, creating it on the parent's own map if absent.
+ *
+ * For writes. A node created by the legacy layout has no `children` array, so this seeds
+ * one from whatever the legacy map holds before anything is inserted, and the write path
+ * never has to reason about two layouts.
+ */
+function ensureChildrenArray(doc: Y.Doc, parentId: NodeId): Y.Array<NodeId> {
+  const node = nodesMap(doc).get(parentId);
+
+  if (!node) {
+    // A parent that does not exist cannot hold children. Returning a detached array
+    // means an insert is silently lost rather than corrupting the node map.
+    return new Y.Array<NodeId>();
+  }
+
+  const owned = node.get(NODE_FIELDS.children);
+  if (owned instanceof Y.Array) return owned as Y.Array<NodeId>;
+
+  const created = new Y.Array<NodeId>();
+  node.set(NODE_FIELDS.children, created);
+
+  // Carry over anything the legacy layout recorded for this parent.
+  const legacy = childrenMap(doc).get(parentId);
+  if (legacy && legacy.length > 0) {
+    created.insert(0, legacy.toArray() as NodeId[]);
+    childrenMap(doc).delete(parentId);
+  }
+
+  return created;
+}
+
+/**
+ * Move a document from the legacy child-order map onto the per-node arrays.
+ *
+ * Run once when a container is loaded. Idempotent, and cheap on a document that is
+ * already current: the loop finds nothing to do and writes nothing.
+ *
+ * Written as an explicit migration rather than a silent read-time fallback so that the
+ * on-disk shape converges to one layout, instead of every file carrying both
+ * representations indefinitely.
+ */
+export function migrateChildrenLayout(doc: Y.Doc): void {
+  const legacy = childrenMap(doc);
+  if (legacy.size === 0) return;
+
+  doc.transact(() => {
+    for (const [parentId, order] of [...legacy.entries()]) {
+      const node = nodesMap(doc).get(parentId);
+
+      if (!node) {
+        // The parent is gone; the entry is stale either way.
+        legacy.delete(parentId);
+        continue;
+      }
+
+      const owned = node.get(NODE_FIELDS.children);
+      if (owned instanceof Y.Array) {
+        // Already migrated by a partial write. Keep the richer source.
+        const existing = owned.toArray() as NodeId[];
+        if (existing.length === 0 && order.length > 0) owned.insert(0, order.toArray() as NodeId[]);
+      } else {
+        node.set(NODE_FIELDS.children, Y.Array.from(order.toArray() as NodeId[]));
+      }
+
+      legacy.delete(parentId);
+    }
+  }, LOCAL_ORIGIN);
 }
 
 export function getChildren(doc: Y.Doc, parentId: NodeId): AdnotaNode[] {
@@ -293,6 +388,7 @@ export function createNode(doc: Y.Doc, input: CreateNodeInput): NodeId {
     const node = new Y.Map<unknown>();
     node.set(NODE_FIELDS.id, id);
     node.set(NODE_FIELDS.parentId, input.parentId);
+    node.set(NODE_FIELDS.children, new Y.Array<NodeId>());
     node.set(NODE_FIELDS.label, input.label ?? emptyLabel());
     node.set(NODE_FIELDS.notes, null);
     node.set(NODE_FIELDS.shape, 'box');
@@ -305,11 +401,8 @@ export function createNode(doc: Y.Doc, input: CreateNodeInput): NodeId {
     node.set(NODE_FIELDS.updatedAt, now);
     nodesMap(doc).set(id, node);
 
-    let siblings = childrenMap(doc).get(input.parentId);
-    if (!siblings) {
-      siblings = new Y.Array<NodeId>();
-      childrenMap(doc).set(input.parentId, siblings);
-    }
+    // The parent's own array, so two peers adding children merge rather than replace.
+    const siblings = ensureChildrenArray(doc, input.parentId);
     const index = input.index ?? siblings.length;
     siblings.insert(Math.max(0, Math.min(index, siblings.length)), [id]);
   }, LOCAL_ORIGIN);
@@ -393,9 +486,9 @@ export function removeNode(doc: Y.Doc, id: NodeId): void {
     const node = nodesMap(doc).get(id);
     const parentId = node?.get(NODE_FIELDS.parentId);
     if (typeof parentId === 'string') {
-      const siblings = childrenMap(doc).get(parentId);
-      const index = siblings ? siblings.toArray().indexOf(id) : -1;
-      if (index >= 0) siblings?.delete(index, 1);
+      const siblings = ensureChildrenArray(doc, parentId);
+      const index = siblings.toArray().indexOf(id);
+      if (index >= 0) siblings.delete(index, 1);
     }
 
     for (const doomedId of doomed) {
@@ -437,16 +530,12 @@ export function moveNode(
   doc.transact(() => {
     const oldParentId = node.get(NODE_FIELDS.parentId);
     if (typeof oldParentId === 'string') {
-      const oldSiblings = childrenMap(doc).get(oldParentId);
-      const oldIndex = oldSiblings ? oldSiblings.toArray().indexOf(id) : -1;
-      if (oldIndex >= 0) oldSiblings?.delete(oldIndex, 1);
+      const oldSiblings = ensureChildrenArray(doc, oldParentId);
+      const oldIndex = oldSiblings.toArray().indexOf(id);
+      if (oldIndex >= 0) oldSiblings.delete(oldIndex, 1);
     }
 
-    let siblings = childrenMap(doc).get(newParentId);
-    if (!siblings) {
-      siblings = new Y.Array<NodeId>();
-      childrenMap(doc).set(newParentId, siblings);
-    }
+    const siblings = ensureChildrenArray(doc, newParentId);
     const target = index ?? siblings.length;
     siblings.insert(Math.max(0, Math.min(target, siblings.length)), [id]);
 
