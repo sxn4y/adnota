@@ -16,13 +16,20 @@ import {
   stripWrapper,
 } from '@adnota/scene';
 import { LABEL_FONT_SIZE, PADDING_X, PADDING_Y, measureNode, type SceneState } from './scene.ts';
+import { nodeAppearance } from '@adnota/scene';
 import { panBy, zoomAt, type Viewport } from './viewport.ts';
 
 const BRANCH_COLOR = '#9aa4b0';
-const NODE_FILL = '#ffffff';
-const NODE_STROKE = '#d5dae1';
 const NODE_STROKE_SELECTED = '#3b6ef6';
 const BRANCH_STROKE_SELECTED = '#3b6ef6';
+
+/**
+ * Thickness of the rule drawn under a node whose shape is `underline`.
+ *
+ * Sits at the bottom edge of the measured text box rather than the node box, so it reads
+ * as an underline of the label rather than a border around the node.
+ */
+const UNDERLINE_INSET = 3;
 
 export interface SceneViewProps {
   readonly scene: SceneState;
@@ -172,12 +179,21 @@ export function SceneView({
             const selected = entry.id === selectedId;
             const editing = entry.id === editingId;
 
+            // Shape and colour come from the document, so they survive a reload, an export
+            // and a merge. An unrecognised shape or slot falls back rather than drawing
+            // nothing.
+            const look = nodeAppearance(entry.node.shape, entry.node.color, width, height);
+            const halfW = width / 2;
+            const halfH = height / 2;
+
             return (
               <g
                 key={entry.id}
                 transform={`translate(${entry.x} ${entry.y})`}
                 data-node-id={entry.id}
                 data-depth={entry.depth}
+                data-shape={entry.node.shape}
+                data-color={entry.node.color}
                 data-selected={selected || undefined}
                 className={editing ? 'adnota-node is-editing' : 'adnota-node'}
                 onClick={(event) => {
@@ -189,19 +205,36 @@ export function SceneView({
                   onEdit(entry.id);
                 }}
               >
-                <rect
-                  x={-width / 2}
-                  y={-height / 2}
-                  width={width}
-                  height={height}
-                  rx={entry.depth === 0 ? 12 : 8}
-                  fill={NODE_FILL}
-                  stroke={selected ? NODE_STROKE_SELECTED : NODE_STROKE}
-                  strokeWidth={selected ? 2 : 1.5}
-                />
+                {look.boxed ? (
+                  <rect
+                    x={-halfW}
+                    y={-halfH}
+                    width={width}
+                    height={height}
+                    // The root is a pill by default, which is what distinguishes it at a
+                    // glance in a large map; everything else defaults to a box.
+                    rx={look.radius}
+                    fill={look.fill}
+                    stroke={selected ? NODE_STROKE_SELECTED : look.stroke}
+                    strokeWidth={selected ? 2 : 1.5}
+                  />
+                ) : null}
+
+                {look.underlined ? (
+                  <line
+                    x1={-halfW + PADDING_X}
+                    y1={halfH - UNDERLINE_INSET}
+                    x2={halfW - PADDING_X}
+                    y2={halfH - UNDERLINE_INSET}
+                    stroke={selected ? NODE_STROKE_SELECTED : look.stroke}
+                    strokeWidth={1.5}
+                    strokeLinecap="round"
+                  />
+                ) : null}
+
                 <foreignObject
-                  x={-width / 2 + PADDING_X}
-                  y={-height / 2 + PADDING_Y}
+                  x={-halfW + PADDING_X}
+                  y={-halfH + PADDING_Y}
                   width={width - PADDING_X * 2}
                   height={height - PADDING_Y * 2}
                 >

@@ -48,11 +48,49 @@ export type NodeShape = 'none' | 'underline' | 'round' | 'pill' | 'box';
  */
 export type NodeColor = string;
 
+/**
+ * What a node *is*.
+ *
+ * `'text'` is the default and is what every document written before images existed
+ * contains, so it is also what a node with no `kind` field reads as. That matters for
+ * forward compatibility in both directions: an older build opening a picture node sees a
+ * node with a kind it does not know and draws its label, and a newer build opening an
+ * older document sees `text`.
+ *
+ * A third kind written by a future version degrades the same way — see
+ * {@link AdnotaNode.kind}. The field exists so a picture can be a node rather than an
+ * inline run of text inside one.
+ */
+export type NodeKind = 'text' | 'image';
+
+/** The picture a node of kind `image` shows. */
+export interface NodeImage {
+  readonly assetId: AssetId;
+  /** Shown when the bytes are missing, and read by anything that cannot draw. */
+  readonly alt: string;
+}
+
 export interface AdnotaNode {
   readonly id: NodeId;
   readonly parentId: NodeId | null;
 
-  /** Short line shown on the canvas. Inline content only, so it stays readable. */
+  /** Defaults to `text`; unknown values read as `text` rather than failing to open. */
+  readonly kind: NodeKind;
+
+  /**
+   * The picture, when `kind` is `image`. Null on every text node.
+   *
+   * The bytes are not here. They live in the container's asset store, addressed by
+   * `assetId`, because a document is a document and a four-megabyte screenshot is not.
+   */
+  readonly image: NodeImage | null;
+
+  /**
+   * Short line shown on the canvas. Inline content only, so it stays readable.
+   *
+   * On an image node this is the *caption* rather than the name: the picture carries the
+   * meaning and the line beneath it says what it is.
+   */
   readonly label: InlineDoc;
 
   /** Optional rich body shown in the notes panel. Null when empty. */

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Baseline permissions. Filesystem access goes through the shell's own commands rather than a blanket fs permission, so a compromised renderer cannot read arbitrary paths. The dialog is granted only the two operations the UI actually calls — open a file, save a file — rather than the plugin's whole default surface, which also includes message boxes and system-tray access that Adnota has no use for.",
+  "description": "Baseline permissions. Filesystem access goes through the shell's own commands rather than a blanket fs permission, so a compromised renderer cannot read arbitrary paths. The dialog is granted only the two operations the UI actually calls - open a file, save a file - rather than the plugin's whole default surface, which also includes message boxes and system-tray access that Adnota has no use for. Single-instance needs no permission here: Adnota uses only the Rust side of the plugin, which hands the path to the frontend as an ordinary event.",
   "windows": ["main"],
   "permissions": [
     "core:default",

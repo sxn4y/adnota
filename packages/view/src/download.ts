@@ -57,8 +57,11 @@ export function downloadText(filename: string, text: string, mime: string): Down
  * Students type things like "Week 3: integrals (revision!)" and the platform will
  * reject or mangle several of those characters, so they are folded away rather than
  * passed through.
+ *
+ * The extension is a parameter because the same title has to become a `.md`, an `.svg` or a
+ * `.adnota`, and deriving it twice in two places is how the two drift apart.
  */
-export function toFilename(title: string, fallback = 'mindmap'): string {
+export function toFilename(title: string, fallback = 'mindmap', extension = 'md'): string {
   const cleaned = title
     .replace(/[\\/:*?"<>|]+/g, '-')
     .replace(/\s+/g, ' ')
@@ -66,5 +69,5 @@ export function toFilename(title: string, fallback = 'mindmap'): string {
     .replace(/^[.\s]+|[.\s]+$/g, '')
     .slice(0, 80);
 
-  return `${cleaned || fallback}.md`;
+  return `${cleaned || fallback}.${extension}`;
 }

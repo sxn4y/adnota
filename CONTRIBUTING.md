@@ -52,6 +52,19 @@ They cover three engines (Chromium, WebKit, Gecko) and include a spec that loads
 *desktop* bundle with its IPC bridge stubbed — so the entry point the student actually
 launches is exercised, not only the browser harness.
 
+### The browser tests build first, on purpose
+
+The harness server is `vite preview`, which serves `dist/`. So `playwright.config.ts` runs
+`pnpm --filter @adnota/web build` *before* starting it.
+
+This is not ceremony. With `preview` alone the suite silently tested whatever was last
+built: a new toolbar button was absent from the DOM, four tests failed to find it, and
+everything else passed — a green run that was asserting nothing about the code on disk. A
+regression suite that reports success while testing a stale build is worse than no suite.
+
+If you start the harness yourself with `pnpm dev:web`, that is a dev server and reflects the
+working tree directly. The two are not interchangeable.
+
 ### Typecheck covers the desktop app
 
 `apps/desktop` is in the root `tsconfig.json` references. This is load-bearing rather than

@@ -23,14 +23,17 @@ import {
 import type { LayoutKind } from '@adnota/scene';
 import { MathSupportReport } from './MathSupportReport.tsx';
 import { NodeEditor } from './NodeEditor.tsx';
+import { NodeStyleControl } from './NodeStyleControl.tsx';
 import { NotesPanel } from './NotesPanel.tsx';
 import { OutlinePanel } from './OutlinePanel.tsx';
 import { SceneView } from './SceneView.tsx';
 import { SearchPalette } from './SearchPalette.tsx';
 import { DocumentsPanel } from './DocumentsPanel.tsx';
 import { downloadText, toFilename } from './download.ts';
+import { buildStandaloneSvg, collectExportStyles, exportViewBox } from './svgExport.ts';
 import type { DocumentLibrary, ExternalFileActions } from './library.ts';
 import {
+  measureNode,
   useNodeCommands,
   useScene,
   useSceneBounds,
@@ -139,10 +142,20 @@ export function MindmapApp({
   const scene = useScene({ doc, kind, revision });
   const bounds = useSceneBounds(scene);
   const selection = useSelection();
+
+  /**
+   * Ask for a fresh layout.
+   *
+   * Named rather than left as three separate `setRevision` calls, because every caller means
+   * the same thing and the argument to `useCallback` below would otherwise be the only
+   * place that idea appears.
+   */
+  const bumpLayout = useCallback(() => setRevision((value) => value + 1), []);
+
   const commands = useNodeCommands({
     doc,
     kind,
-    onChange: useCallback(() => setRevision((value) => value + 1), []),
+    onChange: bumpLayout,
   });
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -251,6 +264,49 @@ export function MindmapApp({
     const result = downloadText(filename, markdown, 'text/markdown');
     setExported(result.ok ? `Exported ${filename}` : (result.error ?? 'Export failed'));
   }, [doc]);
+
+  /**
+   * Export the document as a standalone SVG.
+   *
+   * The scene on screen is already an SVG tree, so this copies it rather than redrawing
+   * anything. What it has to undo is the presentation: the pan-and-zoom transform, and the
+   * stylesheet the labels depend on. Both are handled in `svgExport`, which is where the
+   * reasoning about them lives.
+   *
+   * Known limitation: this is a faithful capture of the view, so a node that is selected
+   * at the time is outlined in the exported file too. Clearing the selection first is the
+   * student's move to make; the alternative is re-rendering the scene with no selection,
+   * which is a larger change than a cosmetic outline is worth.
+   */
+  const exportSvg = useCallback(() => {
+    const source = document.querySelector<SVGGElement>('[data-testid="scene-content"]');
+
+    if (!source) {
+      setExported('Export failed: the scene is not on screen');
+      return;
+    }
+
+    const copy = source.cloneNode(true) as SVGGElement;
+    // The pan-and-zoom is how the student happens to be looking at the map, not part of
+    // the map. Leaving it in would put the contents off-canvas or scaled to nothing.
+    copy.removeAttribute('transform');
+    copy.removeAttribute('data-testid');
+
+    const title = getMeta(doc).title;
+    const filename = toFilename(title, 'mindmap', 'svg');
+
+    // XMLSerializer rather than innerHTML: innerHTML applies HTML parsing rules to an SVG
+    // fragment, which silently mangles attribute case and self-closing elements.
+    const svg = buildStandaloneSvg({
+      content: new XMLSerializer().serializeToString(copy),
+      rect: exportViewBox(scene.laid, measureNode),
+      styles: collectExportStyles(document),
+      title,
+    });
+
+    const result = downloadText(filename, svg, 'image/svg+xml');
+    setExported(result.ok ? `Exported ${filename}` : (result.error ?? 'Export failed'));
+  }, [doc, scene]);
 
   // Ctrl/Cmd+K opens search from anywhere in the window, including from inside the
   // notes editor, because a student looking for a formula should not have to close
@@ -548,6 +604,12 @@ if (event.key === 'Escape') {
           </button>
         </div>
 
+        <NodeStyleControl
+          doc={doc}
+          selectedId={selection.selectedId}
+          onChange={bumpLayout}
+        />
+
         <button
             type="button"
             className={showReport ? 'is-active' : ''}
@@ -612,6 +674,9 @@ if (event.key === 'Escape') {
           </button>
           <button type="button" onClick={exportMarkdown} data-testid="export-markdown">
             Export .md
+          </button>
+          <button type="button" onClick={exportSvg} data-testid="export-svg">
+            Export .svg
           </button>
         </div>
       </header>

@@ -37,6 +37,18 @@ export {
 } from './scene.ts';
 
 export type { TextMetrics } from './measure.ts';
+export type { NodeAppearance, NodeColorSlot, PaletteEntry } from './palette.ts';
+export {
+  COLOR_SLOTS,
+  DEFAULT_COLOR,
+  DEFAULT_SHAPE,
+  NODE_PALETTE,
+  SHAPES,
+  isKnownSlot,
+  nodeAppearance,
+  paletteFor,
+  shapeGeometry,
+} from './palette.ts';
 export {
   clearMeasureCache,
   disposeMeasurement,

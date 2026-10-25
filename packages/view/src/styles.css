@@ -672,3 +672,40 @@ body {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* Appearance controls. */
+.adnota-styles {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adnota-swatches,
+.adnota-shapes {
+  display: flex;
+  gap: 3px;
+}
+
+/*
+ * Swatches carry their colour as an inline style from the TypeScript palette, so the
+ * only thing decided here is shape and size. Keeping the hex out of the stylesheet is
+ * deliberate: six duplicated colours in two places is a drift waiting to happen.
+ */
+.adnota-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 5px;
+  border: 2px solid;
+  cursor: pointer;
+}
+
+.adnota-swatch:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.adnota-shapes button {
+  font-size: 12px;
+  padding: 4px 9px;
+}

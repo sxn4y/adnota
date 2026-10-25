@@ -28,9 +28,18 @@ whether to trust a file format.
 - **Notes** — a block editor per node: headings, lists, quotes, code, inline and display
   maths.
 - **Documents** — create, open, rename and delete `.adnota` files. One folder, flat, in
-  your Documents directory.
+   your Documents directory. Double-clicking a `.adnota` in your file manager opens it here,
+   and if Adnota is already running the open window takes it rather than starting a rival
+   instance that would autosave over your work.
+ - **Open and Save As** — reach documents outside the library folder. Opening one copies it
+   in, so Adnota owns the file it edits rather than sharing it with another program.
 - **Markdown export** — nested bullets with the maths intact as LaTeX, so the file opens
   in Obsidian, a text editor, or a repository and stays searchable.
+- **SVG export** — a standalone vector copy of the map, framed on the content rather than
+  the current view, with its stylesheet embedded so labels and maths keep their layout. Two
+  caveats: `@font-face` rules are dropped, so a formula opened away from the app falls back
+  to a substitute font; and the export is a faithful capture of the view, so a node that is
+  selected when you export is outlined in the file too.
 - **Local first** — the file on disk is the document. No account, no server, no
   telemetry. Works offline.
 
@@ -59,7 +68,11 @@ on today.
   input path.
 - **Collaboration** — `packages/collab` implements sync packets and providers but is
   unwired and has no tests.
-- **Image export** — the scene serialiser exists; PNG/SVG export does not.
+- **PNG export** — SVG works; PNG does not, and the reason is structural rather than an
+  oversight. Labels are HTML inside a `foreignObject`, and Chromium does not rasterise
+  `foreignObject` content when an SVG is drawn into a `<canvas>`. Every label and formula
+  would come out blank in a PNG, which is worse than no PNG at all. A faithful raster
+  export needs a real layout engine, so it is not a small job.
 - **Node colour and shape** — the model supports it; the renderer does not read it yet.
 
 ## Design principles

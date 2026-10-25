@@ -23,6 +23,10 @@ tauri = { version = "2", features = [] }
 # Native Open/Save dialogs. Without it, documents are confined to the fixed
 # Documents/Adnota folder and there is no way to open a file from anywhere else.
 tauri-plugin-dialog = "2"
+# Hands a file opened from the shell or file manager to the window that is already
+# running. Without it, double-clicking a document while Adnota is open starts a second
+# instance that autosaves over the first one's work.
+tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 

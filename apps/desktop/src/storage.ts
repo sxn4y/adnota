@@ -74,6 +74,17 @@ export function resolveBase(): Promise<string> {
 }
 
 /**
+ * The document the operating system asked us to open at launch, if any.
+ *
+ * Non-null when Adnota was started by double-clicking a `.adnota` file, or by a shell
+ * passing one as an argument. Null for an ordinary launch from the Start menu, which is
+ * the common case and must not be treated as an error.
+ */
+export function openedAtLaunch(): Promise<string | null> {
+  return invoke<string | null>('opened_path');
+}
+
+/**
  * Read a document the student picked through a dialog.
  *
  * A separate path from {@link TauriStorage} on purpose. Every method above resolves

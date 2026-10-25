@@ -2,16 +2,17 @@
  * Desktop entry point.
  *
  * The desktop window and the browser harness mount the *same* `@adnota/view` app. This
- * file's entire job is the three things that only exist here: a real filesystem, the
- * document that was on disk when the app last closed, and flushing pending writes when
- * the window goes away. Anything else that appeared here would be a fork waiting to
- * drift from the harness.
+ * file's entire job is the things that only exist here: a real filesystem, the document
+ * that was on disk when the app last closed, files the operating system asks us to open,
+ * and flushing pending writes when the window goes away. Anything else that appeared here
+ * would be a fork waiting to drift from the harness.
  */
 
 import { buildDocument, type DocumentSession } from '@adnota/core';
 import { mountApp, type MountedApp } from '@adnota/view';
 import '@adnota/view/styles.css';
 import { chooseDocumentToOpen, chooseDocumentToSave } from './dialog.ts';
+import { onOpenRequest, openedAtLaunch } from './open-requests.ts';
 import { TauriStorage, readExternal, resolveBase, writeExternal } from './storage.ts';
 import { TauriLibrary } from './library.ts';
 import {
@@ -83,18 +84,10 @@ function showBootError(error: unknown): void {
 async function start(): Promise<void> {
   const storage = new TauriStorage(await resolveBase());
   const library = new TauriLibrary(storage);
-  const first = await openOrCreate(storage, recallRecent());
 
-  /**
-   * Swap the open document in place.
-   *
-   * Remounting the app would discard the viewport, the panel state and the outline
-   * scroll, and would flash an empty window between documents. The previous session is
-   * closed first so its last edits leave the debounce window before anything else
-   * happens; skipping that is how a student's final sentence of a session goes missing.
-   */
-let mounted: MountedApp | null = null;
+  let mounted: MountedApp | null = null;
   let current: OpenDocument | null = null;
+
   /**
    * Stops the previous document's flush timer.
    *
@@ -105,6 +98,14 @@ let mounted: MountedApp | null = null;
    */
   let stopHeartbeat: (() => void) | null = null;
 
+  /**
+   * Swap the open document in place.
+   *
+   * Remounting the app would discard the viewport, the panel state and the outline
+   * scroll, and would flash an empty window between documents. The previous session is
+   * closed first so its last edits leave the debounce window before anything else
+   * happens; skipping that is how a student's final sentence of a session goes missing.
+   */
   const mount = (opened: OpenDocument): void => {
     const previous = current;
     current = opened;
@@ -128,7 +129,7 @@ let mounted: MountedApp | null = null;
         // session publishes a state change — which is the first autosave.
         subscribe: (listener) => opened.session.subscribe(listener),
       },
-library,
+      library,
       // Only supplied by the desktop app. The browser harness renders no Open / Save As
       // buttons at all, because it has no native dialog to show.
       externalFiles: {
@@ -142,7 +143,7 @@ library,
         const { bytes } = await buildDocument(opened.doc, new Map());
         return bytes;
       },
-onOpenDocument: (name) => {
+      onOpenDocument: (name) => {
         // A name from the library is relative to the base; a path from Open… is
         // absolute. Routing them apart here keeps the library functions from ever
         // seeing a path they should refuse.
@@ -150,18 +151,48 @@ onOpenDocument: (name) => {
           ? openExternalPath(storage, readExternal, name)
           : openNamed(storage, name);
 
-        void opening
-          .then(mount)
-          .catch((error: unknown) => {
-            // The document already on screen stays; replacing it with an error page
-            // because a *different* file failed to open would be a poor trade.
-            console.error('Could not open that document', error);
-          });
+        void opening.then(mount).catch((error: unknown) => {
+          // The document already on screen stays; replacing it with an error page
+          // because a *different* file failed to open would be a poor trade.
+          console.error('Could not open that document', error);
+        });
       },
     });
   };
 
-mount(first);
+  /**
+   * Open a file the operating system handed us, falling back to the usual startup.
+   *
+   * A document double-clicked in a file manager must win over the last-opened pointer,
+   * because that is what the student asked for. But it must not win at the cost of a
+   * window: a stale association, or a file that has since been deleted, would otherwise
+   * leave the app with nothing to show. So the fallback is not an error path, it is the
+   * normal continuation.
+   */
+  const openStartupDocument = async (): Promise<OpenDocument> => {
+    const requested = await openedAtLaunch();
+
+    if (requested) {
+      try {
+        return await openExternalPath(storage, readExternal, requested);
+      } catch (error) {
+        console.error('Could not open the requested document, starting normally', error);
+      }
+    }
+
+    return openOrCreate(storage, recallRecent());
+  };
+
+  mount(await openStartupDocument());
+
+  // Registered after the first document is on screen, so `mount` is guaranteed to exist.
+  // A file opened in the window between launch and here would be missed; that gap is a
+  // few hundred milliseconds at startup and the file is still in the shell's "open with".
+  void onOpenRequest((path) => {
+    void openExternalPath(storage, readExternal, path)
+      .then(mount)
+      .catch((error: unknown) => console.error('Could not open that document', error));
+  });
 }
 
 /** Windows and POSIX both use a leading separator or drive letter for an absolute path. */

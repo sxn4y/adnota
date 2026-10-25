@@ -42,6 +42,8 @@ import type {
   InlineDoc,
   NodeColor,
   NodeId,
+  NodeImage,
+  NodeKind,
   NodeShape,
 } from './model.ts';
 
@@ -67,6 +69,8 @@ export const SCHEMA_KEYS = {
 const NODE_FIELDS = {
   id: 'id',
   parentId: 'parentId',
+  kind: 'kind',
+  image: 'image',
   children: 'children',
   label: 'label',
   notes: 'notes',
@@ -188,6 +192,8 @@ function readNode(map: Y.Map<unknown>): AdnotaNode | null {
   if (typeof id !== 'string') return null;
 
   const parentId = map.get(NODE_FIELDS.parentId);
+  const kind = map.get(NODE_FIELDS.kind);
+  const image = map.get(NODE_FIELDS.image);
   const label = map.get(NODE_FIELDS.label);
   const notes = map.get(NODE_FIELDS.notes);
   const shape = map.get(NODE_FIELDS.shape);
@@ -200,6 +206,8 @@ function readNode(map: Y.Map<unknown>): AdnotaNode | null {
   return {
     id,
     parentId: typeof parentId === 'string' ? parentId : null,
+    kind: isNodeKind(kind) ? kind : 'text',
+    image: isNodeImage(image) ? readNodeImage(image) : null,
     label: isInlineDoc(label) ? label : EMPTY_DOC,
     notes: isBlockDoc(notes) ? notes : null,
     shape: isNodeShape(shape) ? shape : 'box',
@@ -378,16 +386,29 @@ export interface CreateNodeInput {
   readonly parentId: NodeId;
   readonly label?: InlineDoc;
   readonly index?: number;
+  /**
+   * The picture for a node of kind `image`.
+   *
+   * Passing one creates a picture node; omitting it creates a text node. There is no way
+   * to say "kind image, picture unknown", because that state has nothing to draw and
+   * nothing to save.
+   */
+  readonly image?: NodeImage;
 }
 
 export function createNode(doc: Y.Doc, input: CreateNodeInput): NodeId {
   const id = newId('n');
   const now = Date.now();
+  const isPicture = input.image !== undefined;
 
   doc.transact(() => {
     const node = new Y.Map<unknown>();
     node.set(NODE_FIELDS.id, id);
     node.set(NODE_FIELDS.parentId, input.parentId);
+    // Written explicitly rather than left to the reader's default, so a node's shape on
+    // disk is the same whether or not this build understands the fields.
+    node.set(NODE_FIELDS.kind, isPicture ? 'image' : 'text');
+    if (input.image) node.set(NODE_FIELDS.image, { ...input.image });
     node.set(NODE_FIELDS.children, new Y.Array<NodeId>());
     node.set(NODE_FIELDS.label, input.label ?? emptyLabel());
     node.set(NODE_FIELDS.notes, null);
@@ -417,6 +438,57 @@ export function setLabel(doc: Y.Doc, id: NodeId, label: InlineDoc): void {
     node.set(NODE_FIELDS.label, label);
     node.set(NODE_FIELDS.updatedAt, Date.now());
   }, LOCAL_ORIGIN);
+}
+
+/**
+ * Turn a node into a picture node, or back into a text node.
+ *
+ * The one-way door is deliberate in the other direction too: turning a text node into a
+ * picture discards nothing, because a text node's label is kept and becomes the
+ * caption. Turning a picture node back into a text node therefore leaves its bytes in
+ * the container, unreferenced — which is why `removeNode`, not this, is what prunes
+ * assets.
+ */
+export function setNodeImage(doc: Y.Doc, id: NodeId, image: NodeImage | null): void {
+  const node = nodesMap(doc).get(id);
+  if (!node) return;
+
+  doc.transact(() => {
+    if (image) {
+      node.set(NODE_FIELDS.kind, 'image');
+      node.set(NODE_FIELDS.image, { ...image });
+    } else {
+      node.set(NODE_FIELDS.kind, 'text');
+      node.delete(NODE_FIELDS.image);
+    }
+    node.set(NODE_FIELDS.updatedAt, Date.now());
+  }, LOCAL_ORIGIN);
+}
+
+/**
+ * Drop assets no node refers to any more.
+ *
+ * Content addressing makes this safe to be aggressive about: the bytes of a picture
+ * still in use are reachable from its node, and everything else is unreachable by
+ * definition. Run after a delete rather than on every save, because computing reachability
+ * walks the whole document and saves are frequent.
+ */
+export function pruneAssets(doc: Y.Doc): number {
+  const referenced = new Set<string>();
+  for (const node of allNodes(doc)) {
+    if (node.image) referenced.add(node.image.assetId);
+  }
+
+  let removed = 0;
+  doc.transact(() => {
+    for (const asset of getAssets(doc)) {
+      if (referenced.has(asset.id)) continue;
+      assetsMap(doc).delete(asset.id);
+      removed += 1;
+    }
+  }, LOCAL_ORIGIN);
+
+  return removed;
 }
 
 export function setNotes(doc: Y.Doc, id: NodeId, notes: BlockDoc | null): void {
@@ -705,4 +777,32 @@ const NODE_SHAPES: readonly NodeShape[] = ['none', 'underline', 'round', 'pill',
 
 function isNodeShape(value: unknown): value is NodeShape {
   return typeof value === 'string' && (NODE_SHAPES as readonly string[]).includes(value);
+}
+
+/**
+ * A `kind` this build draws. A document naming anything else opens as a text node rather
+ * than failing, which is the same rule the shape and colour fields follow.
+ */
+function isNodeKind(value: unknown): value is NodeKind {
+  return value === 'text' || value === 'image';
+}
+
+/**
+ * A picture reference.
+ *
+ * `alt` is required rather than optional: an image with no description is unusable to
+ * anyone reading the file without the bytes, and making it explicit at the write boundary
+ * is cheaper than discovering that at the render boundary. The reader supplies `''`, which
+ * is a different thing from omitting the field — it is a deliberate "no description".
+ */
+function isNodeImage(value: unknown): value is NodeImage {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as { assetId?: unknown; alt?: unknown };
+  return typeof candidate.assetId === 'string' && candidate.assetId.length > 0;
+}
+
+function readNodeImage(value: unknown): NodeImage | null {
+  if (!isNodeImage(value)) return null;
+  const alt = (value as { alt?: unknown }).alt;
+  return { assetId: value.assetId, alt: typeof alt === 'string' ? alt : '' };
 }

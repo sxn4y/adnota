@@ -63,6 +63,12 @@ export default defineConfig({
       name: 'firefox',
       testIgnore: /desktop-entry\.spec\.ts/,
       use: { ...devices['Desktop Firefox'] },
+      // Twice the default, for the reason in the `timeout` note above: Gecko starts a page
+      // and lays out KaTeX far more slowly under parallel load than the other two, and it
+      // fails by never finding the scene at all. The suite grew by 30 tests when SVG export
+      // landed, which is enough extra load to turn a rare flake into a regular one, so the
+      // budget is raised rather than the flake being left to chance.
+      timeout: 120_000,
     },
     {
       // The desktop bundle, loaded with its Tauri IPC stubbed. Separate from the
@@ -84,11 +90,17 @@ export default defineConfig({
     {
       // `--host 127.0.0.1` is explicit because Vite's default `localhost` resolves to
       // IPv6 on some machines, and Playwright's readiness probe uses IPv4.
+      //
+      // The build is part of the command on purpose. `preview` serves `dist/`, so without
+      // it this suite silently tests whatever was last built: a new button or handler can
+      // be absent from the DOM while every test still passes, which is the worst possible
+      // failure for a regression suite. Building here keeps the run honest and still
+      // exercises the production bundle rather than a dev server.
       command:
-        'pnpm --filter @adnota/web preview --port 4173 --strictPort --host 127.0.0.1',
+        'pnpm --filter @adnota/web build && pnpm --filter @adnota/web preview --port 4173 --strictPort --host 127.0.0.1',
       url: 'http://127.0.0.1:4173',
       reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
+      timeout: 240_000,
     },
     {
       command:
